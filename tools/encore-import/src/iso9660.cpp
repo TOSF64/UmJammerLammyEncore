@@ -46,6 +46,33 @@ std::uint32_t read_le32(
         (static_cast<std::uint32_t>(sector[offset + 3]) << 24);
 }
 
+std::uint32_t read_be32(
+    const encore::DiscReader::SectorData& data,
+    std::size_t offset)
+{
+    return
+    (static_cast<std::uint32_t>(data[offset]) << 24) |
+    (static_cast<std::uint32_t>(data[offset + 1]) << 16) |
+    (static_cast<std::uint32_t>(data[offset + 2]) << 8) |
+    static_cast<std::uint32_t>(data[offset + 3]);
+}
+
+std::uint32_t read_both_endian32(
+    const encore::DiscReader::SectorData& data,
+    std::size_t offset)
+{
+    const auto little = read_le32(data, offset);
+    const auto big = read_be32(data, offset + 4);
+
+    if (little != big) {
+        throw std::runtime_error(
+            "ISO 9660 both-endian 32-bit value does not match."
+        );
+    }
+
+    return little;
+}
+
 } // namespace
 
 PrimaryVolumeDescriptor
@@ -86,6 +113,53 @@ read_primary_volume_descriptor(DiscReader& disc)
         );
     }
 
+    // We now know this is a valid Primary Volume Descriptor.
+
+    constexpr std::size_t root_record_offset = 156;
+    constexpr std::uint8_t minimum_root_record_length = 34;
+
+    const auto root_record_length =
+    sector[root_record_offset];
+
+    if (root_record_length < minimum_root_record_length) {
+        throw std::runtime_error(
+            "ISO 9660 root directory record is too short."
+        );
+    }
+
+    const auto root_extent_location =
+    read_both_endian32(
+        sector,
+        root_record_offset + 2
+    );
+
+    const auto root_data_length =
+    read_both_endian32(
+        sector,
+        root_record_offset + 10
+    );
+
+    const auto root_identifier_length =
+    sector[root_record_offset + 32];
+
+    if (root_identifier_length != 1 ||
+        sector[root_record_offset + 33] != 0) {
+        throw std::runtime_error(
+            "Invalid ISO 9660 root directory identifier."
+        );
+        }
+
+        constexpr std::uint8_t directory_flag = 0x02;
+
+    const auto root_flags =
+    sector[root_record_offset + 25];
+
+    if ((root_flags & directory_flag) == 0) {
+        throw std::runtime_error(
+            "ISO 9660 root record is not marked as a directory."
+        );
+    }
+
     PrimaryVolumeDescriptor descriptor;
 
     descriptor.system_identifier =
@@ -99,6 +173,12 @@ read_primary_volume_descriptor(DiscReader& disc)
 
     descriptor.logical_block_size =
         read_le16(sector, 128);
+
+    descriptor.root_directory.extent_location =
+        root_extent_location;
+
+    descriptor.root_directory.data_length =
+        root_data_length;
 
     return descriptor;
 }

@@ -243,7 +243,13 @@ int main(int argc, char* argv[])
             << " bytes\n"
             << "  Volume blocks:      "
             << pvd.volume_space_size
-            << "\n\n";
+            << '\n'
+            << "  Root extent LBA:    "
+            << pvd.root_directory.extent_location
+            << '\n'
+            << "  Root size:          "
+            << pvd.root_directory.data_length
+            << " bytes\n\n";
 
         if (digest == kSupportedBinSha256) {
             std::cout
