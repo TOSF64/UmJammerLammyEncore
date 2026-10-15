@@ -1,0 +1,50 @@
+# Build output
+/build/
+/build-*/
+/cmake-build-*/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Debugging
+core
+core.*
+*.log
+
+# Local imported game data
+/game-data/
+/imported/
+/disc-images/
+
+# PlayStation disc images
+*.bin
+*.cue
+*.iso
+*.img
+*.chd
+
+# PlayStation executables / BIOS images
+*.exe
+*.rom
+
+# Reverse-engineering databases
+*.ghidra
+*.gpr
+*.rep/
+*.id0
+*.id1
+*.id2
+*.idb
+*.i64
+*.nam
+*.til
