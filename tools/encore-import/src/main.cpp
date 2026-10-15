@@ -1,5 +1,7 @@
 #include <openssl/evp.h>
 
+#include "disc_reader.hpp"
+#include "iso9660.hpp"
 #include <array>
 #include <cctype>
 #include <filesystem>
@@ -213,8 +215,35 @@ int main(int argc, char* argv[])
         const std::string digest =
             sha256_file(bin_path);
 
-        std::cout
+            std::cout
             << "  " << digest << "\n\n";
+
+            std::cout
+            << "Inspecting ISO 9660 filesystem...\n";
+
+            encore::DiscReader disc(bin_path);
+
+            const auto pvd =
+            encore::read_primary_volume_descriptor(disc);
+
+            std::cout
+            << "  Standard:           ISO 9660\n"
+            << "  System identifier:  "
+            << (pvd.system_identifier.empty()
+            ? "(empty)"
+            : pvd.system_identifier)
+            << '\n'
+            << "  Volume identifier:  "
+            << (pvd.volume_identifier.empty()
+            ? "(empty)"
+            : pvd.volume_identifier)
+            << '\n'
+            << "  Logical block size: "
+            << pvd.logical_block_size
+            << " bytes\n"
+            << "  Volume blocks:      "
+            << pvd.volume_space_size
+            << "\n\n";
 
         if (digest == kSupportedBinSha256) {
             std::cout
