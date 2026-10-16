@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <vector>
 
 namespace encore {
 
@@ -20,6 +21,11 @@ public:
 
     [[nodiscard]]
     SectorData read_data_sector(std::uint32_t logical_block);
+
+    [[nodiscard]]
+    std::vector<std::uint8_t> read_data(
+        std::uint32_t logical_block,
+        std::uint32_t byte_count);
 
 private:
     std::ifstream file_;

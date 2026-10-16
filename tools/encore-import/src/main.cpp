@@ -14,6 +14,8 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include "system_cnf.hpp"
+#include <algorithm>
 
 namespace fs = std::filesystem;
 
@@ -268,6 +270,40 @@ int main(int argc, char* argv[])
                 << "         LBA:  " << entry.extent_location << "\n"
                 << "         Size: " << entry.data_length << " bytes\n";
             }
+
+            const auto system_cnf_it =
+            std::find_if(
+                root_entries.begin(),
+                         root_entries.end(),
+                         [](const encore::DirectoryEntry& entry) {
+                             return entry.identifier == "SYSTEM.CNF;1";
+                         });
+
+            if (system_cnf_it == root_entries.end()) {
+                throw std::runtime_error(
+                    "SYSTEM.CNF;1 was not found in the root directory.");
+            }
+
+            const auto system_cnf_data =
+            disc.read_data(
+                system_cnf_it->extent_location,
+                system_cnf_it->data_length);
+
+            const std::string system_cnf_text(
+                system_cnf_data.begin(),
+                                              system_cnf_data.end());
+
+            const auto system_config =
+            encore::parse_system_cnf(system_cnf_text);
+
+            const auto boot_disc_id =
+            encore::normalize_playstation_disc_id(
+                system_config.boot_path);
+
+            std::cout
+            << "\nPlayStation boot configuration:\n"
+            << "  BOOT:    " << system_config.boot_path << "\n"
+            << "  Disc ID: " << boot_disc_id << "\n";
 
         if (digest == kSupportedBinSha256) {
             std::cout

@@ -1,5 +1,6 @@
 #include "disc_reader.hpp"
 
+#include <algorithm>
 #include <stdexcept>
 
 namespace encore {
@@ -46,6 +47,37 @@ DiscReader::read_data_sector(std::uint32_t logical_block)
     }
 
     return data;
+}
+
+std::vector<std::uint8_t>
+DiscReader::read_data(
+    std::uint32_t logical_block,
+    std::uint32_t byte_count)
+{
+    std::vector<std::uint8_t> result;
+    result.reserve(byte_count);
+
+    std::uint32_t current_block = logical_block;
+    std::uint32_t remaining = byte_count;
+
+    while (remaining > 0) {
+        const auto sector = read_data_sector(current_block);
+
+        const auto bytes_to_copy =
+        std::min<std::uint32_t>(
+            remaining,
+            static_cast<std::uint32_t>(sector.size()));
+
+        result.insert(
+            result.end(),
+                      sector.begin(),
+                      sector.begin() + bytes_to_copy);
+
+        remaining -= bytes_to_copy;
+        ++current_block;
+    }
+
+    return result;
 }
 
 } // namespace encore
