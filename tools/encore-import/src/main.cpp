@@ -15,6 +15,7 @@
 #include <string>
 #include <string_view>
 #include "system_cnf.hpp"
+#include "psx_exe.hpp"
 #include <algorithm>
 
 namespace fs = std::filesystem;
@@ -300,10 +301,58 @@ int main(int argc, char* argv[])
             encore::normalize_playstation_disc_id(
                 system_config.boot_path);
 
+            const auto boot_separator =
+            system_config.boot_path.find_last_of("\\/");
+
+            const std::string boot_filename(
+                system_config.boot_path.substr(
+                    boot_separator == std::string::npos
+                    ? 0
+                    : boot_separator + 1));
+
+            const auto boot_entry_it =
+            std::find_if(
+                root_entries.begin(),
+                         root_entries.end(),
+                         [&boot_filename](const encore::DirectoryEntry& entry) {
+                             return entry.identifier == boot_filename;
+                         });
+
+            if (boot_entry_it == root_entries.end()) {
+                throw std::runtime_error(
+                    "Boot executable was not found in the root directory.");
+            }
+
+            const auto boot_executable_data =
+            disc.read_data(
+                boot_entry_it->extent_location,
+                boot_entry_it->data_length);
+
+            const auto exe_header =
+            encore::parse_psx_exe_header(
+                boot_executable_data);
+
             std::cout
             << "\nPlayStation boot configuration:\n"
             << "  BOOT:    " << system_config.boot_path << "\n"
             << "  Disc ID: " << boot_disc_id << "\n";
+
+            std::cout
+            << "\nPS-X EXE:\n"
+            << std::hex
+            << "  Initial PC:    0x" << exe_header.initial_pc << "\n"
+            << "  Initial GP:    0x" << exe_header.initial_gp << "\n"
+            << "  Load address:  0x" << exe_header.load_address << "\n"
+            << std::dec
+            << "  File size:     " << exe_header.file_size << " bytes\n"
+            << std::hex
+            << "  BSS address:   0x" << exe_header.bss_address << "\n"
+            << std::dec
+            << "  BSS size:      " << exe_header.bss_size << " bytes\n"
+            << std::hex
+            << "  Stack address: 0x" << exe_header.stack_address << "\n"
+            << std::dec
+            << "  Stack size:    " << exe_header.stack_size << " bytes\n";
 
         if (digest == kSupportedBinSha256) {
             std::cout

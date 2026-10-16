@@ -5,6 +5,7 @@ add_executable(encore-import
     src/disc_reader.cpp
     src/iso9660.cpp
     src/system_cnf.cpp
+    src/psx_exe.cpp
 )
 
 target_link_libraries(encore-import
