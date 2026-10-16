@@ -226,6 +226,12 @@ int main(int argc, char* argv[])
             const auto pvd =
             encore::read_primary_volume_descriptor(disc);
 
+            const auto root_entries =
+            encore::read_directory(
+                disc,
+                pvd.root_directory,
+                pvd.logical_block_size);
+
             std::cout
             << "  Standard:           ISO 9660\n"
             << "  System identifier:  "
@@ -250,6 +256,18 @@ int main(int argc, char* argv[])
             << "  Root size:          "
             << pvd.root_directory.data_length
             << " bytes\n\n";
+
+            std::cout << "\nRoot directory:\n";
+
+            for (const auto& entry : root_entries) {
+                std::cout
+                << "  "
+                << (entry.is_directory() ? "[DIR]  " : "[FILE] ")
+                << entry.identifier
+                << "\n"
+                << "         LBA:  " << entry.extent_location << "\n"
+                << "         Size: " << entry.data_length << " bytes\n";
+            }
 
         if (digest == kSupportedBinSha256) {
             std::cout
