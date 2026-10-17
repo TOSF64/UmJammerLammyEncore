@@ -272,6 +272,42 @@ int main(int argc, char* argv[])
                 << "         Size: " << entry.data_length << " bytes\n";
             }
 
+            const auto s0_it =
+            std::find_if(
+                root_entries.begin(),
+                         root_entries.end(),
+                         [](const encore::DirectoryEntry& entry) {
+                             return entry.identifier == "S0" &&
+                             entry.is_directory();
+                         });
+
+            if (s0_it == root_entries.end()) {
+                throw std::runtime_error(
+                    "S0 directory was not found.");
+            }
+
+            const encore::DirectoryRecord s0_directory{
+                .extent_location = s0_it->extent_location,
+                .data_length = s0_it->data_length,
+            };
+
+            const auto s0_entries =
+            encore::read_directory(
+                disc,
+                s0_directory,
+                pvd.logical_block_size);
+
+            std::cout << "\nS0 directory:\n";
+
+            for (const auto& entry : s0_entries) {
+                std::cout
+                << "  "
+                << (entry.is_directory() ? "[DIR]  " : "[FILE] ")
+                << entry.identifier << "\n"
+                << "         LBA:  " << entry.extent_location << "\n"
+                << "         Size: " << entry.data_length << " bytes\n";
+            }
+
             const auto system_cnf_it =
             std::find_if(
                 root_entries.begin(),
