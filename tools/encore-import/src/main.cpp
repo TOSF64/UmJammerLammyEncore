@@ -161,6 +161,51 @@ void print_header()
         << "---------------------------------\n\n";
 }
 
+void print_directory_tree(
+    encore::DiscReader& disc,
+    const encore::DirectoryRecord& directory,
+    std::uint16_t logical_block_size,
+    std::size_t depth = 0)
+{
+    const auto entries =
+    encore::read_directory(
+        disc,
+        directory,
+        logical_block_size);
+
+    for (const auto& entry : entries) {
+        // "." and ".." are useful directory records, but following them
+        // recursively would send us around the filesystem forever.
+        if (entry.identifier == "." || entry.identifier == "..") {
+            continue;
+        }
+
+        const std::string indent(depth * 2, ' ');
+
+        std::cout
+        << indent
+        << (entry.is_directory() ? "[DIR]  " : "[FILE] ")
+        << entry.identifier << '\n'
+        << indent
+        << "  LBA:  " << entry.extent_location << '\n'
+        << indent
+        << "  Size: " << entry.data_length << " bytes\n";
+
+        if (entry.is_directory()) {
+            const encore::DirectoryRecord child_directory{
+                .extent_location = entry.extent_location,
+                .data_length = entry.data_length,
+            };
+
+            print_directory_tree(
+                disc,
+                child_directory,
+                logical_block_size,
+                depth + 1);
+        }
+    }
+}
+
 } // namespace
 
 int main(int argc, char* argv[])
@@ -272,41 +317,12 @@ int main(int argc, char* argv[])
                 << "         Size: " << entry.data_length << " bytes\n";
             }
 
-            const auto s0_it =
-            std::find_if(
-                root_entries.begin(),
-                         root_entries.end(),
-                         [](const encore::DirectoryEntry& entry) {
-                             return entry.identifier == "S0" &&
-                             entry.is_directory();
-                         });
+            std::cout << "\nComplete filesystem tree:\n";
 
-            if (s0_it == root_entries.end()) {
-                throw std::runtime_error(
-                    "S0 directory was not found.");
-            }
-
-            const encore::DirectoryRecord s0_directory{
-                .extent_location = s0_it->extent_location,
-                .data_length = s0_it->data_length,
-            };
-
-            const auto s0_entries =
-            encore::read_directory(
+            print_directory_tree(
                 disc,
-                s0_directory,
+                pvd.root_directory,
                 pvd.logical_block_size);
-
-            std::cout << "\nS0 directory:\n";
-
-            for (const auto& entry : s0_entries) {
-                std::cout
-                << "  "
-                << (entry.is_directory() ? "[DIR]  " : "[FILE] ")
-                << entry.identifier << "\n"
-                << "         LBA:  " << entry.extent_location << "\n"
-                << "         Size: " << entry.data_length << " bytes\n";
-            }
 
             const auto system_cnf_it =
             std::find_if(
