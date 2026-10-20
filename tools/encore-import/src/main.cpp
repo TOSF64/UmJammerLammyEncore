@@ -305,24 +305,26 @@ int main(int argc, char* argv[])
             << pvd.root_directory.data_length
             << " bytes\n\n";
 
-            std::cout << "\nRoot directory:\n";
+            if (digest == kSupportedBinSha256) {
+                std::cout << "\nRoot directory:\n";
 
-            for (const auto& entry : root_entries) {
-                std::cout
-                << "  "
-                << (entry.is_directory() ? "[DIR]  " : "[FILE] ")
-                << entry.identifier
-                << "\n"
-                << "         LBA:  " << entry.extent_location << "\n"
-                << "         Size: " << entry.data_length << " bytes\n";
+                for (const auto& entry : root_entries) {
+                    std::cout
+                    << "  "
+                    << (entry.is_directory() ? "[DIR]  " : "[FILE] ")
+                    << entry.identifier
+                    << "\n"
+                    << "         LBA:  " << entry.extent_location << "\n"
+                    << "         Size: " << entry.data_length << " bytes\n";
+                }
+
+                std::cout << "\nComplete filesystem tree:\n";
+
+                print_directory_tree(
+                    disc,
+                    pvd.root_directory,
+                    pvd.logical_block_size);
             }
-
-            std::cout << "\nComplete filesystem tree:\n";
-
-            print_directory_tree(
-                disc,
-                pvd.root_directory,
-                pvd.logical_block_size);
 
             const auto system_cnf_it =
             std::find_if(
