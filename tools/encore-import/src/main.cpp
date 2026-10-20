@@ -22,14 +22,101 @@ namespace fs = std::filesystem;
 
 namespace {
 
-constexpr std::string_view kSupportedBinSha256 =
+    constexpr std::string_view kSupportedBinSha256 =
     "26133b3186e3ff7ab3c6c8b34e1ddf2d5561fdffdb5457097d67d0924b59f56c";
 
-struct DiscInfo {
-    std::string_view title;
-    std::string_view region;
-    std::string_view disc_id;
-};
+    struct DiscInfo {
+        std::string_view title;
+        std::string_view region;
+        std::string_view disc_id;
+    };
+
+    void extract_file(
+        encore::DiscReader& disc,
+        const encore::DirectoryEntry& entry,
+        const fs::path& destination)
+    {
+        const auto data =
+        disc.read_data(
+            entry.extent_location,
+            entry.data_length);
+
+        fs::create_directories(destination.parent_path());
+
+        std::ofstream output(
+            destination,
+            std::ios::binary);
+
+        if (!output) {
+            throw std::runtime_error(
+                "Could not create output file: " + destination.string());
+        }
+
+        output.write(
+            reinterpret_cast<const char*>(data.data()),
+                     static_cast<std::streamsize>(data.size()));
+
+        if (!output) {
+            throw std::runtime_error(
+                "Could not write output file: " + destination.string());
+        }
+    }
+
+    std::string strip_iso_version(std::string_view identifier)
+    {
+        const auto semicolon = identifier.find(';');
+
+        if (semicolon == std::string_view::npos) {
+            return std::string(identifier);
+        }
+
+        return std::string(identifier.substr(0, semicolon));
+    }
+
+    void extract_directory_tree(
+        encore::DiscReader& disc,
+        const encore::DirectoryRecord& directory,
+        std::uint16_t logical_block_size,
+        const fs::path& destination)
+    {
+        fs::create_directories(destination);
+
+        const auto entries =
+        encore::read_directory(
+            disc,
+            directory,
+            logical_block_size);
+
+        for (const auto& entry : entries) {
+            if (entry.identifier == "." || entry.identifier == "..") {
+                continue;
+            }
+
+            const std::string output_name =
+            strip_iso_version(entry.identifier);
+
+            const fs::path output_path =
+            destination / output_name;
+
+            if (entry.is_directory()) {
+                const encore::DirectoryRecord child_directory{
+                    .extent_location = entry.extent_location,
+                    .data_length = entry.data_length,
+                };
+
+                extract_directory_tree(
+                    disc,
+                    child_directory,
+                    logical_block_size,
+                    output_path);
+            } else {
+                extract_file(
+                    disc,
+                    entry,
+                    output_path);
+            }
+        }
+    }
 
 constexpr DiscInfo kPalEurope{
     "Um Jammer Lammy",
@@ -417,6 +504,37 @@ int main(int argc, char* argv[])
                 << "  Status:  Supported\n"
                 << "  Integrity: Verified\n\n"
                 << "I gotta believe!\n";
+
+            std::cout
+                << "\nEnter import destination: ";
+
+            std::string output_input;
+            std::getline(std::cin, output_input);
+
+            if (output_input.empty()) {
+                throw std::runtime_error(
+                    "Import destination cannot be empty.");
+                }
+
+                const fs::path output_root =
+                fs::path(output_input) / std::string(kPalEurope.disc_id);
+
+                std::cout
+                << "\nImport destination:\n"
+                << "  " << output_root << '\n';
+
+                std::cout
+                << "\nExtracting filesystem...\n";
+
+                extract_directory_tree(
+                    disc,
+                    pvd.root_directory,
+                    pvd.logical_block_size,
+                    output_root);
+
+                std::cout
+                << "\nFilesystem extraction complete:\n"
+                << "  " << output_root << '\n';
 
             return 0;
         }
